@@ -13,45 +13,57 @@ jobs:
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v1.1
 
-    - name: Install winflexbison and MinGW (Chocolatey)
-      shell: powershell
-      run: |
-        choco install winflexbison3 -y
-        choco install mingw -y
 
     - name: Set up MSYS2 and install dependencies
       uses: msys2/setup-msys2@v2
       with:
+        update: true
         install: flex bison mingw-w64-x86_64-binutils
 
-    - name: Add Chocolatey and MinGW bins to PATH
+    - name: Add MSYS2 usr/bin and mingw64/bin to PATH
       shell: powershell
       run: |
-        # Add Chocolatey shims (should resolve 'flex' and 'bison' after winflexbison3 install)
-        Write-Output 'C:\ProgramData\chocolatey\bin' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        # winflexbison3 may also install bins here:
-        Write-Output 'C:\ProgramData\chocolatey\lib\winflexbison3\tools' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        # Add MinGW bin (for 'as')
-        Write-Output 'C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-    
-    - name: Debug":"" verify tools on PATH
+        $msysUsrBin = 'C:\msys64\usr\bin'
+        $msysMingw64 = 'C:\msys64\mingw64\bin'
+        
+        if (Test-Path $msysUsrBin) {
+          Write-Output $msysUsrBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        }
+        if (Test-Path $msysMingw64) {
+          Write-Output $msysMingw64 | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        }
+
+    - name: Verify tools on PATH
       shell: powershell
       run: |
         Write-Output "=== Verify tools ==="
         $missing = $false
-        if (-not (where.exe flex 2>$null)) { Write-Error "flex not found"; $missing = $true }
-        if (-not (where.exe bison 2>$null)) { Write-Error "bison not found"; $missing = $true }
-        if (-not (where.exe as 2>$null)) { Write-Error "as not found"; $missing = $true }
+
+        if (-not (where.exe flex 2>$null)) {
+          Write-Error "flex not found"
+          $missing = $true
+        }
+        if (-not (where.exe bison 2>$null)) {
+          Write-Error "bison not found"
+          $missing = $true
+        }
+        if (-not (where.exe as 2>$null)) {
+          Write-Error "as (assembler) not found"
+          $missing = $true
+        }
+
         if ($missing) { exit 1 }
+
         Write-Output "PATH=$env:Path"
+        where.exe flex | Out-String | Write-Output
+        where.exe bison | Out-String | Write-Output
+        where.exe as | Out-String | Write-Output
 
     - name: Build Solution
       shell: powershell
       run: |
-        # If flex/bison are installed by choco winflexbison3, the shims in Chocolatey bin will provide "flex" and "bison".
-        # Explicitly set AsmPath to MinGW bin so projects using "$(AsmPath)as" find the assembler.
         msbuild otvdm.sln /t:Rebuild /p:Configuration=Release /p:Platform=Win32 `
-          /p:AsmPath="C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin\" `
+          /p:AsmPath="C:\msys64\mingw64\bin\" `
           /p:FlexPath="" /p:BisonPath=""
 
     - name: Upload Artifacts
