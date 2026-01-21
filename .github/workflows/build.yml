@@ -14,19 +14,24 @@ jobs:
       uses: microsoft/setup-msbuild@v1.1
 
 
-    - name: Set up MSYS2 and install dependencies
+    - name: Install winflexbison (Chocolatey)
+      shell: powershell
+      run: |
+        choco install winflexbison -y
+        refreshenv
+
+    - name: Set up MSYS2 for assembler
       uses: msys2/setup-msys2@v2
       with:
         update: true
-        install: flex bison mingw-w64-x86_64-binutils
+        install: mingw-w64-x86_64-binutils
 
-    - name: Add MSYS2 usr/bin to PATH
+    - name: Add Chocolatey bin to PATH
       shell: powershell
       run: |
-        $msysUsrBin = 'C:\msys64\usr\bin'
-        
-        if (Test-Path $msysUsrBin) {
-          Add-Content -Path $env:GITHUB_PATH -Value $msysUsrBin
+        $chocBin = 'C:\ProgramData\chocolatey\bin'
+        if (Test-Path $chocBin) {
+          Add-Content -Path $env:GITHUB_PATH -Value $chocBin
         }
 
     - name: Verify tools on PATH
