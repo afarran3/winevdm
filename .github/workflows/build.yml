@@ -19,6 +19,11 @@ jobs:
         choco install winflexbison3 -y
         choco install mingw -y
 
+    - name: Set up MSYS2 and install dependencies
+      uses: msys2/setup-msys2@v2
+      with:
+        install: flex bison mingw-w64-x86_64-binutils
+
     - name: Add Chocolatey and MinGW bins to PATH
       shell: powershell
       run: |
