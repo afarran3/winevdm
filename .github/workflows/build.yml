@@ -22,29 +22,28 @@ jobs:
     - name: Add Chocolatey and MinGW bins to PATH
       shell: powershell
       run: |
-        # Add Chocolatey shims (common location for installed tools like winflexbison3)
+        # Add Chocolatey shims
         Write-Output 'C:\ProgramData\chocolatey\bin' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        # Add MinGW bin where `as` (GNU assembler) is expected
+        # Add MinGW bin
         Write-Output 'C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-    - name: Debug":"" verify tools on PATH
+    - name: Debug - Verify tools on PATH
       shell: powershell
       run: |
         Write-Output "=== Verify tools ==="
         $missing = $false
-        if (-not (where.exe flex 2>$null)) { Write-Error "flex not found"; $missing = $true }
-        if (-not (where.exe bison 2>$null)) { Write-Error "bison not found"; $missing = $true }
-        if (-not (where.exe as 2>$null)) { Write-Error "as not found"; $missing = $true }
+        if (-not (Get-Command flex -ErrorAction SilentlyContinue)) { Write-Error "flex not found"; $missing = $true }
+        if (-not (Get-Command bison -ErrorAction SilentlyContinue)) { Write-Error "bison not found"; $missing = $true }
+        if (-not (Get-Command as -ErrorAction SilentlyContinue)) { Write-Error "as not found"; $missing = $true }
         if ($missing) { exit 1 }
         Write-Output "PATH=$env:Path"
 
     - name: Build Solution
       shell: powershell
       run: |
-        # If flex/bison are installed by choco winflexbison3, the shims in Chocolatey bin will provide "flex" and "bison".
-        # Explicitly set AsmPath to MinGW bin so projects using "$(AsmPath)as" find the assembler.
+        # Fixed the trailing backslash bug in AsmPath below
         msbuild otvdm.sln /t:Rebuild /p:Configuration=Release /p:Platform=Win32 `
-          /p:AsmPath="C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin\" `
+          /p:AsmPath=C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin\ `
           /p:FlexPath="" /p:BisonPath=""
 
     - name: Upload Artifacts
@@ -52,9 +51,10 @@ jobs:
       with:
         name: otvdm-v0.9.0-build
         path: |
-          **/*.exe
-          **/*.dll
-
+          Release/*.exe
+          Release/*.dll
+          otvdm/*.exe
+          otvdm/*.dll
 # name: Build winevdm
 # on: [push, workflow_dispatch]
 
