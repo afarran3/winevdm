@@ -45,17 +45,9 @@ jobs:
         Write-Output "=== Verify tools ==="
         Write-Output "PATH=$env:Path"
         
-        # Check for flex
-        if (-not (Test-Path "C:\ProgramData\chocolatey\lib\winflexbison\tools\flex.exe")) {
-          Write-Error "flex.exe not found in winflexbison tools directory"
-          exit 1
-        }
-        
-        # Check for bison
-        if (-not (Test-Path "C:\ProgramData\chocolatey\lib\winflexbison\tools\bison.exe")) {
-          Write-Error "bison.exe not found in winflexbison tools directory"
-          exit 1
-        }
+        # List all files in winflexbison lib directory to see what's actually installed
+        Write-Output "=== winflexbison lib contents ==="
+        Get-ChildItem -Path "C:\ProgramData\chocolatey\lib" -Recurse | Where-Object { $_.Name -like "*flex*" -or $_.Name -like "*bison*" } | Select-Object FullName
         
         # Check for assembler
         if (-not (Test-Path "C:\msys64\usr\bin\as.exe")) {
@@ -63,7 +55,7 @@ jobs:
           exit 1
         }
         
-        Write-Output "All tools found successfully"
+        Write-Output "Assembler found successfully"
 
     - name: Build Solution
       shell: powershell
