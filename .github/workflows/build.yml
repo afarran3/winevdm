@@ -1,3 +1,18 @@
+# name: Build winevdm
+# on: [push, workflow_dispatch]
+
+# jobs:
+#   build:
+#     runs-on: windows-2022
+#     timeout-minutes: 60
+
+#     steps:
+#     - name: Checkout Code
+#       uses: actions/checkout@v3
+
+#     - name: Setup MSBuild
+#       uses: microsoft/setup-msbuild@v1.1
+
 name: Build winevdm
 on: [push, workflow_dispatch]
 
@@ -12,7 +27,6 @@ jobs:
 
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v1.1
-
 
     - name: Install winflexbison (Chocolatey)
       shell: powershell
@@ -38,72 +52,52 @@ jobs:
         if (Test-Path $chocBin) {
           Add-Content -Path $env:GITHUB_PATH -Value $chocBin
         }
-        # Also add the specific winflexbison tools directory
         $wfbTools = 'C:\ProgramData\chocolatey\lib\winflexbison\tools'
         if (Test-Path $wfbTools) {
           Add-Content -Path $env:GITHUB_PATH -Value $wfbTools
         }
 
-    - name: Verify tools on PATH
+    # --- FIX 1: Make flex/bison discoverable by standard names ---
+    - name: Fix Flex and Bison names
       shell: powershell
       run: |
-        Write-Output "=== Verify tools ==="
-        Write-Output "PATH=$env:Path"
-        
-        # Check for flex and bison (now we know they're in tools directory)
-        if (-not (Test-Path "C:\ProgramData\chocolatey\lib\winflexbison\tools\win_flex.exe")) {
-          Write-Error "win_flex.exe not found"
-          exit 1
+        $tools = "C:\ProgramData\chocolatey\lib\winflexbison\tools"
+        Write-Output "Creating aliases for flex and bison in $tools"
+        Copy-Item "$tools\win_flex.exe" "$tools\flex.exe" -Force
+        Copy-Item "$tools\win_bison.exe" "$tools\bison.exe" -Force
+    # -------------------------------------------------------------
+
+    # --- FIX 2: Patch the XML comment error ---
+    - name: Patch broken XML in BuildToolProperty.props
+      shell: powershell
+      run: |
+        $file = "BuildToolProperty.props"
+        if (Test-Path $file) {
+            Write-Output "Patching $file to remove illegal XML comments..."
+            (Get-Content $file) -replace '--', '- -' | Set-Content $file
         }
-        
-        if (-not (Test-Path "C:\ProgramData\chocolatey\lib\winflexbison\tools\win_bison.exe")) {
-          Write-Error "win_bison.exe not found"
-          exit 1
-        }
-        
-        # Check for assembler - list what's actually in both directories
-        Write-Output "=== MSYS2 usr/bin contents ==="
-        if (Test-Path "C:\msys64\usr\bin") {
-          Get-ChildItem -Path "C:\msys64\usr\bin" -Filter "as*" | Select-Object Name
-        } else {
-          Write-Output "C:\msys64\usr\bin does not exist"
-        }
-        
-        Write-Output "=== MSYS2 mingw64/bin contents ==="
-        if (Test-Path "C:\msys64\mingw64\bin") {
-          Get-ChildItem -Path "C:\msys64\mingw64\bin" -Filter "as*" | Select-Object Name
-        } else {
-          Write-Output "C:\msys64\mingw64\bin does not exist"
-        }
-        
-        # Check for assembler in both locations
-        if ((-not (Test-Path "C:\msys64\usr\bin\as.exe")) -and (-not (Test-Path "C:\msys64\mingw64\bin\as.exe"))) {
-          Write-Error "as.exe not found in either MSYS2 usr/bin or mingw64/bin"
-          exit 1
-        }
-        
-        Write-Output "All tools found successfully"
+    # ------------------------------------------
 
     - name: Build Solution
       shell: powershell
       run: |
-        # Try to find assembler in either location
         $asPath = ""
         if (Test-Path "C:\msys64\usr\bin\as.exe") {
           $asPath = "C:\msys64\usr\bin\"
         } elseif (Test-Path "C:\msys64\mingw64\bin\as.exe") {
           $asPath = "C:\msys64\mingw64\bin\"
         } else {
-          Write-Error "as.exe not found in either MSYS2 usr/bin or mingw64/bin"
+          Write-Error "as.exe not found"
           exit 1
         }
         
         Write-Output "Using AsmPath: $asPath"
         
+        # Note: We removed the quotes around FlexPath/BisonPath to avoid backslash escaping issues
         msbuild otvdm.sln /t:Rebuild /p:Configuration=Release /p:Platform=Win32 `
           /p:AsmPath="$asPath" `
-          /p:FlexPath="C:\ProgramData\chocolatey\lib\winflexbison\tools\" `
-          /p:BisonPath="C:\ProgramData\chocolatey\lib\winflexbison\tools\"
+          /p:FlexPath=C:\ProgramData\chocolatey\lib\winflexbison\tools\ `
+          /p:BisonPath=C:\ProgramData\chocolatey\lib\winflexbison\tools\
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
@@ -112,38 +106,136 @@ jobs:
         path: |
           **/*.exe
           **/*.dll
+#     - name: Install winflexbison (Chocolatey)
+#       shell: powershell
+#       run: |
+#         choco install winflexbison -y
+#         Import-Module $env:ChocolateyInstall\helpers\chocolateyProfile.psm1
 
-# name: Build winevdm
-# on: [push, workflow_dispatch]
+#     - name: Set up MSYS2 for assembler
+#       uses: msys2/setup-msys2@v2
+#       with:
+#         update: true
+#         install: mingw-w64-x86_64-binutils
 
-# jobs:
-#   build:
-#     runs-on: windows-2022
-    
-#     steps:
-#     - name: Checkout Code
-#       uses: actions/checkout@v3
-      
-#     - name: Setup MSBuild
-#       uses: microsoft/setup-msbuild@v1.1
+#     - name: Install binutils (assembler) in MSYS2
+#       run: |
+#         C:\msys64\usr\bin\bash.exe -lc "pacman -Syu --noconfirm"
+#         C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm binutils"
+        
+#     - name: Add Chocolatey bin to PATH
+#       shell: powershell
+#       run: |
+#         $chocBin = 'C:\ProgramData\chocolatey\bin'
+#         if (Test-Path $chocBin) {
+#           Add-Content -Path $env:GITHUB_PATH -Value $chocBin
+#         }
+#         # Also add the specific winflexbison tools directory
+#         $wfbTools = 'C:\ProgramData\chocolatey\lib\winflexbison\tools'
+#         if (Test-Path $wfbTools) {
+#           Add-Content -Path $env:GITHUB_PATH -Value $wfbTools
+#         }
 
-#     - name: Install flex and bison
-#       run: choco install winflexbison -y
-
-#     - name: Install MinGW (Required for Assembler)
-#       run: choco install mingw --no-progress --force
-      
-#     - name: Add MinGW to Path
-#       run: echo "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin" >> $env:GITHUB_PATH
+#     - name: Verify tools on PATH
+#       shell: powershell
+#       run: |
+#         Write-Output "=== Verify tools ==="
+#         Write-Output "PATH=$env:Path"
+        
+#         # Check for flex and bison (now we know they're in tools directory)
+#         if (-not (Test-Path "C:\ProgramData\chocolatey\lib\winflexbison\tools\win_flex.exe")) {
+#           Write-Error "win_flex.exe not found"
+#           exit 1
+#         }
+        
+#         if (-not (Test-Path "C:\ProgramData\chocolatey\lib\winflexbison\tools\win_bison.exe")) {
+#           Write-Error "win_bison.exe not found"
+#           exit 1
+#         }
+        
+#         # Check for assembler - list what's actually in both directories
+#         Write-Output "=== MSYS2 usr/bin contents ==="
+#         if (Test-Path "C:\msys64\usr\bin") {
+#           Get-ChildItem -Path "C:\msys64\usr\bin" -Filter "as*" | Select-Object Name
+#         } else {
+#           Write-Output "C:\msys64\usr\bin does not exist"
+#         }
+        
+#         Write-Output "=== MSYS2 mingw64/bin contents ==="
+#         if (Test-Path "C:\msys64\mingw64\bin") {
+#           Get-ChildItem -Path "C:\msys64\mingw64\bin" -Filter "as*" | Select-Object Name
+#         } else {
+#           Write-Output "C:\msys64\mingw64\bin does not exist"
+#         }
+        
+#         # Check for assembler in both locations
+#         if ((-not (Test-Path "C:\msys64\usr\bin\as.exe")) -and (-not (Test-Path "C:\msys64\mingw64\bin\as.exe"))) {
+#           Write-Error "as.exe not found in either MSYS2 usr/bin or mingw64/bin"
+#           exit 1
+#         }
+        
+#         Write-Output "All tools found successfully"
 
 #     - name: Build Solution
-#       run: msbuild otvdm.sln /t:Rebuild /p:Configuration=Release /p:Platform=Win32
-      
+#       shell: powershell
+#       run: |
+#         # Try to find assembler in either location
+#         $asPath = ""
+#         if (Test-Path "C:\msys64\usr\bin\as.exe") {
+#           $asPath = "C:\msys64\usr\bin\"
+#         } elseif (Test-Path "C:\msys64\mingw64\bin\as.exe") {
+#           $asPath = "C:\msys64\mingw64\bin\"
+#         } else {
+#           Write-Error "as.exe not found in either MSYS2 usr/bin or mingw64/bin"
+#           exit 1
+#         }
+        
+#         Write-Output "Using AsmPath: $asPath"
+        
+#         msbuild otvdm.sln /t:Rebuild /p:Configuration=Release /p:Platform=Win32 `
+#           /p:AsmPath="$asPath" `
+#           /p:FlexPath="C:\ProgramData\chocolatey\lib\winflexbison\tools\" `
+#           /p:BisonPath="C:\ProgramData\chocolatey\lib\winflexbison\tools\"
+
 #     - name: Upload Artifacts
 #       uses: actions/upload-artifact@v4
 #       with:
 #         name: otvdm-v0.9.0-build
-#         # Uploads the exe and dll files generated
 #         path: |
 #           **/*.exe
 #           **/*.dll
+
+# # name: Build winevdm
+# # on: [push, workflow_dispatch]
+
+# # jobs:
+# #   build:
+# #     runs-on: windows-2022
+    
+# #     steps:
+# #     - name: Checkout Code
+# #       uses: actions/checkout@v3
+      
+# #     - name: Setup MSBuild
+# #       uses: microsoft/setup-msbuild@v1.1
+
+# #     - name: Install flex and bison
+# #       run: choco install winflexbison -y
+
+# #     - name: Install MinGW (Required for Assembler)
+# #       run: choco install mingw --no-progress --force
+      
+# #     - name: Add MinGW to Path
+# #       run: echo "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin" >> $env:GITHUB_PATH
+
+# #     - name: Build Solution
+# #       run: msbuild otvdm.sln /t:Rebuild /p:Configuration=Release /p:Platform=Win32
+      
+# #     - name: Upload Artifacts
+# #       uses: actions/upload-artifact@v4
+# #       with:
+# #         name: otvdm-v0.9.0-build
+# #         # Uploads the exe and dll files generated
+# #         path: |
+# #           **/*.exe
+# #           **/*.dll
