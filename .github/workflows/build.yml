@@ -33,6 +33,11 @@ jobs:
         if (Test-Path $chocBin) {
           Add-Content -Path $env:GITHUB_PATH -Value $chocBin
         }
+        # Also add the specific winflexbison tools directory
+        $wfbTools = 'C:\ProgramData\chocolatey\lib\winflexbison\tools'
+        if (Test-Path $wfbTools) {
+          Add-Content -Path $env:GITHUB_PATH -Value $wfbTools
+        }
 
     - name: Verify tools on PATH
       shell: powershell
