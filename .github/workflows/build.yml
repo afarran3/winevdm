@@ -31,9 +31,9 @@ jobs:
       shell: powershell
       run: |
         Write-Output "=== Verify tools ==="
-        where.exe flex 2>$null || Write-Output "flex not found"
-        where.exe bison 2>$null || Write-Output "bison not found"
-        where.exe as 2>$null || Write-Output "as not found"
+        if (-not (where.exe flex 2>$null)) { Write-Output "flex not found" }
+        if (-not (where.exe bison 2>$null)) { Write-Output "bison not found" }
+        if (-not (where.exe as 2>$null)) { Write-Output "as not found" }
         Write-Output "PATH=$env:Path"
 
     - name: Build Solution
