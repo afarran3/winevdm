@@ -56,9 +56,17 @@ jobs:
           exit 1
         }
         
-        # Check for assembler in MSYS2
-        if (-not (Test-Path "C:\msys64\usr\bin\as.exe")) {
-          Write-Error "as.exe not found in MSYS2 usr/bin"
+        # Check for assembler in MSYS2 - list what's actually in usr/bin
+        Write-Output "=== MSYS2 usr/bin contents ==="
+        Get-ChildItem -Path "C:\msys64\usr\bin" -Filter "as*" | Select-Object Name
+        
+        # Check for assembler in mingw64/bin as fallback
+        Write-Output "=== MSYS2 mingw64/bin contents ==="
+        Get-ChildItem -Path "C:\msys64\mingw64\bin" -Filter "as*" | Select-Object Name
+        
+        # Check for assembler in both locations
+        if ((-not (Test-Path "C:\msys64\usr\bin\as.exe")) -and (-not (Test-Path "C:\msys64\mingw64\bin\as.exe"))) {
+          Write-Error "as.exe not found in either MSYS2 usr/bin or mingw64/bin"
           exit 1
         }
         
@@ -67,8 +75,21 @@ jobs:
     - name: Build Solution
       shell: powershell
       run: |
+        # Try to find assembler in either location
+        $asPath = ""
+        if (Test-Path "C:\msys64\usr\bin\as.exe") {
+          $asPath = "C:\msys64\usr\bin\"
+        } elseif (Test-Path "C:\msys64\mingw64\bin\as.exe") {
+          $asPath = "C:\msys64\mingw64\bin\"
+        } else {
+          Write-Error "as.exe not found in either MSYS2 usr/bin or mingw64/bin"
+          exit 1
+        }
+        
+        Write-Output "Using AsmPath: $asPath"
+        
         msbuild otvdm.sln /t:Rebuild /p:Configuration=Release /p:Platform=Win32 `
-          /p:AsmPath="C:\msys64\usr\bin\" `
+          /p:AsmPath="$asPath" `
           /p:FlexPath="C:\ProgramData\chocolatey\lib\winflexbison\tools\" `
           /p:BisonPath="C:\ProgramData\chocolatey\lib\winflexbison\tools\"
 
