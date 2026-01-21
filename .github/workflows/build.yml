@@ -45,24 +45,32 @@ jobs:
         Write-Output "=== Verify tools ==="
         Write-Output "PATH=$env:Path"
         
-        # List all files in winflexbison lib directory to see what's actually installed
-        Write-Output "=== winflexbison lib contents ==="
-        Get-ChildItem -Path "C:\ProgramData\chocolatey\lib" -Recurse | Where-Object { $_.Name -like "*flex*" -or $_.Name -like "*bison*" } | Select-Object FullName
+        # Check for flex and bison (now we know they're in tools directory)
+        if (-not (Test-Path "C:\ProgramData\chocolatey\lib\winflexbison\tools\win_flex.exe")) {
+          Write-Error "win_flex.exe not found"
+          exit 1
+        }
         
-        # Check for assembler
+        if (-not (Test-Path "C:\ProgramData\chocolatey\lib\winflexbison\tools\win_bison.exe")) {
+          Write-Error "win_bison.exe not found"
+          exit 1
+        }
+        
+        # Check for assembler in MSYS2
         if (-not (Test-Path "C:\msys64\usr\bin\as.exe")) {
           Write-Error "as.exe not found in MSYS2 usr/bin"
           exit 1
         }
         
-        Write-Output "Assembler found successfully"
+        Write-Output "All tools found successfully"
 
     - name: Build Solution
       shell: powershell
       run: |
         msbuild otvdm.sln /t:Rebuild /p:Configuration=Release /p:Platform=Win32 `
           /p:AsmPath="C:\msys64\usr\bin\" `
-          /p:FlexPath="" /p:BisonPath=""
+          /p:FlexPath="C:\ProgramData\chocolatey\lib\winflexbison\tools\" `
+          /p:BisonPath="C:\ProgramData\chocolatey\lib\winflexbison\tools\"
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
