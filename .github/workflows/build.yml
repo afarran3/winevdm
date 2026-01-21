@@ -42,7 +42,7 @@ jobs:
           Add-Content -Path $env:GITHUB_PATH -Value $wfbTools
         }
 
-    # --- KEEP THIS: Fixes "code 9009" error ---
+    # --- FIX 1: Make flex/bison discoverable by standard names ---
     - name: Fix Flex and Bison names
       shell: powershell
       run: |
@@ -50,9 +50,25 @@ jobs:
         Write-Output "Creating aliases for flex and bison in $tools"
         if (Test-Path "$tools\win_flex.exe") { Copy-Item "$tools\win_flex.exe" "$tools\flex.exe" -Force }
         if (Test-Path "$tools\win_bison.exe") { Copy-Item "$tools\win_bison.exe" "$tools\bison.exe" -Force }
-    # ------------------------------------------
-
-    # (XML Patch step removed as requested)
+    
+    # --- FIX 2: Set M4 Path & Create Dummy unistd.h ---
+    - name: Fix Environment for Bison and Compiler
+      shell: powershell
+      run: |
+        # 1. Tell Bison where M4 is (Fixes "exited with code 1")
+        $m4Path = "C:\ProgramData\chocolatey\lib\winflexbison\tools\m4.exe"
+        Write-Output "Setting M4 environment variable to $m4Path"
+        echo "M4=$m4Path" >> $env:GITHUB_ENV
+        
+        # 2. Create dummy unistd.h (Fixes "Cannot open include file: unistd.h")
+        $dummyDir = "C:\dummyinclude"
+        New-Item -ItemType Directory -Force -Path $dummyDir | Out-Null
+        New-Item -ItemType File -Force -Path "$dummyDir\unistd.h" | Out-Null
+        Write-Output "Created dummy unistd.h at $dummyDir\unistd.h"
+        
+        # 3. Add dummy include to MSVC Include Path
+        echo "INCLUDE=$dummyDir;$env:INCLUDE" >> $env:GITHUB_ENV
+    # -----------------------------------------------------------
 
     - name: Build Solution
       shell: powershell
@@ -69,7 +85,6 @@ jobs:
         
         Write-Output "Using AsmPath: $asPath"
         
-        # Build command with careful path handling
         msbuild otvdm.sln /t:Rebuild /p:Configuration=Release /p:Platform=Win32 `
           /p:AsmPath="$asPath" `
           /p:FlexPath=C:\ProgramData\chocolatey\lib\winflexbison\tools\ `
