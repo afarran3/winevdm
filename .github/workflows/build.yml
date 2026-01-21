@@ -11,6 +11,9 @@ jobs:
       
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v1.1
+
+    - name: Install flex and bison
+      run: choco install winflexbison -y
       
     - name: Install MinGW (Required for Assembler)
       run: choco install mingw --no-progress --force
