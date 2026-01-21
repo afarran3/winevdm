@@ -20,17 +20,13 @@ jobs:
         update: true
         install: flex bison mingw-w64-x86_64-binutils
 
-    - name: Add MSYS2 usr/bin and mingw64/bin to PATH
+    - name: Add MSYS2 usr/bin to PATH
       shell: powershell
       run: |
         $msysUsrBin = 'C:\msys64\usr\bin'
-        $msysMingw64 = 'C:\msys64\mingw64\bin'
         
         if (Test-Path $msysUsrBin) {
-          Write-Output $msysUsrBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        }
-        if (Test-Path $msysMingw64) {
-          Write-Output $msysMingw64 | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          Add-Content -Path $env:GITHUB_PATH -Value $msysUsrBin
         }
 
     - name: Verify tools on PATH
@@ -63,7 +59,7 @@ jobs:
       shell: powershell
       run: |
         msbuild otvdm.sln /t:Rebuild /p:Configuration=Release /p:Platform=Win32 `
-          /p:AsmPath="C:\msys64\mingw64\bin\" `
+          /p:AsmPath="C:\msys64\usr\bin\" `
           /p:FlexPath="" /p:BisonPath=""
 
     - name: Upload Artifacts
