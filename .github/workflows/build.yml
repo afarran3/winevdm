@@ -27,13 +27,15 @@ jobs:
         # Add MinGW bin where `as` (GNU assembler) is expected
         Write-Output 'C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-    - name: Debug":" verify tools on PATH
+    - name: Debug: verify tools on PATH
       shell: powershell
       run: |
         Write-Output "=== Verify tools ==="
-        if (-not (where.exe flex 2>$null)) { Write-Output "flex not found" }
-        if (-not (where.exe bison 2>$null)) { Write-Output "bison not found" }
-        if (-not (where.exe as 2>$null)) { Write-Output "as not found" }
+        $missing = $false
+        if (-not (where.exe flex 2>$null)) { Write-Error "flex not found"; $missing = $true }
+        if (-not (where.exe bison 2>$null)) { Write-Error "bison not found"; $missing = $true }
+        if (-not (where.exe as 2>$null)) { Write-Error "as not found"; $missing = $true }
+        if ($missing) { exit 1 }
         Write-Output "PATH=$env:Path"
 
     - name: Build Solution
