@@ -1,0 +1,31 @@
+name: Build winevdm
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: windows-2022
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+      
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v1.1
+      
+    - name: Install MinGW (Required for Assembler)
+      run: choco install mingw --no-progress --force
+      
+    - name: Add MinGW to Path
+      run: echo "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin" >> $env:GITHUB_PATH
+
+    - name: Build Solution
+      run: msbuild otvdm.sln /t:Rebuild /p:Configuration=Release /p:Platform=Win32
+      
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: otvdm-v0.9.0-build
+        # Uploads the exe and dll files generated
+        path: |
+          **/*.exe
+          **/*.dll
