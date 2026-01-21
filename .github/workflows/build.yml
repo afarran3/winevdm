@@ -1,18 +1,3 @@
-# name: Build winevdm
-# on: [push, workflow_dispatch]
-
-# jobs:
-#   build:
-#     runs-on: windows-2022
-#     timeout-minutes: 60
-
-#     steps:
-#     - name: Checkout Code
-#       uses: actions/checkout@v3
-
-#     - name: Setup MSBuild
-#       uses: microsoft/setup-msbuild@v1.1
-
 name: Build winevdm
 on: [push, workflow_dispatch]
 
@@ -57,26 +42,17 @@ jobs:
           Add-Content -Path $env:GITHUB_PATH -Value $wfbTools
         }
 
-    # --- FIX 1: Make flex/bison discoverable by standard names ---
+    # --- KEEP THIS: Fixes "code 9009" error ---
     - name: Fix Flex and Bison names
       shell: powershell
       run: |
         $tools = "C:\ProgramData\chocolatey\lib\winflexbison\tools"
         Write-Output "Creating aliases for flex and bison in $tools"
-        Copy-Item "$tools\win_flex.exe" "$tools\flex.exe" -Force
-        Copy-Item "$tools\win_bison.exe" "$tools\bison.exe" -Force
-    # -------------------------------------------------------------
-
-    # --- FIX 2: Patch the XML comment error ---
-    - name: Patch broken XML in BuildToolProperty.props
-      shell: powershell
-      run: |
-        $file = "BuildToolProperty.props"
-        if (Test-Path $file) {
-            Write-Output "Patching $file to remove illegal XML comments..."
-            (Get-Content $file) -replace '--', '- -' | Set-Content $file
-        }
+        if (Test-Path "$tools\win_flex.exe") { Copy-Item "$tools\win_flex.exe" "$tools\flex.exe" -Force }
+        if (Test-Path "$tools\win_bison.exe") { Copy-Item "$tools\win_bison.exe" "$tools\bison.exe" -Force }
     # ------------------------------------------
+
+    # (XML Patch step removed as requested)
 
     - name: Build Solution
       shell: powershell
@@ -93,7 +69,7 @@ jobs:
         
         Write-Output "Using AsmPath: $asPath"
         
-        # Note: We removed the quotes around FlexPath/BisonPath to avoid backslash escaping issues
+        # Build command with careful path handling
         msbuild otvdm.sln /t:Rebuild /p:Configuration=Release /p:Platform=Win32 `
           /p:AsmPath="$asPath" `
           /p:FlexPath=C:\ProgramData\chocolatey\lib\winflexbison\tools\ `
