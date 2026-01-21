@@ -4,31 +4,86 @@ on: [push, workflow_dispatch]
 jobs:
   build:
     runs-on: windows-2022
-    
+    timeout-minutes: 60
+
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
-      
+
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v1.1
 
-    - name: Install flex and bison
-      run: choco install winflexbison -y
-      
-    - name: Install MinGW (Required for Assembler)
-      run: choco install mingw --no-progress --force
-      
-    - name: Add MinGW to Path
-      run: echo "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin" >> $env:GITHUB_PATH
+    - name: Install winflexbison and MinGW (Chocolatey)
+      shell: powershell
+      run: |
+        choco install winflexbison3 -y
+        choco install mingw -y
+
+    - name: Add Chocolatey and MinGW bins to PATH
+      shell: powershell
+      run: |
+        # Add Chocolatey shims (common location for installed tools like winflexbison3)
+        Write-Output 'C:\ProgramData\chocolatey\bin' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        # Add MinGW bin where `as` (GNU assembler) is expected
+        Write-Output 'C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+    - name: Debug: verify tools on PATH
+      shell: powershell
+      run: |
+        Write-Output "=== Verify tools ==="
+        where.exe flex 2>$null || Write-Output "flex not found"
+        where.exe bison 2>$null || Write-Output "bison not found"
+        where.exe as 2>$null || Write-Output "as not found"
+        Write-Output "PATH=$env:Path"
 
     - name: Build Solution
-      run: msbuild otvdm.sln /t:Rebuild /p:Configuration=Release /p:Platform=Win32
-      
+      shell: powershell
+      run: |
+        # If flex/bison are installed by choco winflexbison3, the shims in Chocolatey bin will provide "flex" and "bison".
+        # Explicitly set AsmPath to MinGW bin so projects using "$(AsmPath)as" find the assembler.
+        msbuild otvdm.sln /t:Rebuild /p:Configuration=Release /p:Platform=Win32 `
+          /p:AsmPath="C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin\" `
+          /p:FlexPath="" /p:BisonPath=""
+
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: otvdm-v0.9.0-build
-        # Uploads the exe and dll files generated
         path: |
           **/*.exe
           **/*.dll
+
+# name: Build winevdm
+# on: [push, workflow_dispatch]
+
+# jobs:
+#   build:
+#     runs-on: windows-2022
+    
+#     steps:
+#     - name: Checkout Code
+#       uses: actions/checkout@v3
+      
+#     - name: Setup MSBuild
+#       uses: microsoft/setup-msbuild@v1.1
+
+#     - name: Install flex and bison
+#       run: choco install winflexbison -y
+
+#     - name: Install MinGW (Required for Assembler)
+#       run: choco install mingw --no-progress --force
+      
+#     - name: Add MinGW to Path
+#       run: echo "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin" >> $env:GITHUB_PATH
+
+#     - name: Build Solution
+#       run: msbuild otvdm.sln /t:Rebuild /p:Configuration=Release /p:Platform=Win32
+      
+#     - name: Upload Artifacts
+#       uses: actions/upload-artifact@v4
+#       with:
+#         name: otvdm-v0.9.0-build
+#         # Uploads the exe and dll files generated
+#         path: |
+#           **/*.exe
+#           **/*.dll
