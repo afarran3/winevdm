@@ -56,13 +56,12 @@ jobs:
           exit 1
         }
         
-        # Check for assembler in MSYS2 - list what's actually in usr/bin
+        # Check for assembler - list what's actually in both directories
         Write-Output "=== MSYS2 usr/bin contents ==="
-        Get-ChildItem -Path "C:\msys64\usr\bin" -Filter "as*" | Select-Object Name
+        Get-ChildItem -Path "C:\msys64\usr\bin" -Filter "as*" -ErrorAction SilentlyContinue | Select-Object Name
         
-        # Check for assembler in mingw64/bin as fallback
         Write-Output "=== MSYS2 mingw64/bin contents ==="
-        Get-ChildItem -Path "C:\msys64\mingw64\bin" -Filter "as*" | Select-Object Name
+        Get-ChildItem -Path "C:\msys64\mingw64\bin" -Filter "as*" -ErrorAction SilentlyContinue | Select-Object Name
         
         # Check for assembler in both locations
         if ((-not (Test-Path "C:\msys64\usr\bin\as.exe")) -and (-not (Test-Path "C:\msys64\mingw64\bin\as.exe"))) {
