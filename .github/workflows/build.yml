@@ -43,27 +43,27 @@ jobs:
       shell: powershell
       run: |
         Write-Output "=== Verify tools ==="
-        $missing = $false
-
-        if (-not (where.exe flex 2>$null)) {
-          Write-Error "flex not found"
-          $missing = $true
-        }
-        if (-not (where.exe bison 2>$null)) {
-          Write-Error "bison not found"
-          $missing = $true
-        }
-        if (-not (where.exe as 2>$null)) {
-          Write-Error "as (assembler) not found"
-          $missing = $true
-        }
-
-        if ($missing) { exit 1 }
-
         Write-Output "PATH=$env:Path"
-        where.exe flex | Out-String | Write-Output
-        where.exe bison | Out-String | Write-Output
-        where.exe as | Out-String | Write-Output
+        
+        # Check for flex
+        if (-not (Test-Path "C:\ProgramData\chocolatey\lib\winflexbison\tools\flex.exe")) {
+          Write-Error "flex.exe not found in winflexbison tools directory"
+          exit 1
+        }
+        
+        # Check for bison
+        if (-not (Test-Path "C:\ProgramData\chocolatey\lib\winflexbison\tools\bison.exe")) {
+          Write-Error "bison.exe not found in winflexbison tools directory"
+          exit 1
+        }
+        
+        # Check for assembler
+        if (-not (Test-Path "C:\msys64\usr\bin\as.exe")) {
+          Write-Error "as.exe not found in MSYS2 usr/bin"
+          exit 1
+        }
+        
+        Write-Output "All tools found successfully"
 
     - name: Build Solution
       shell: powershell
