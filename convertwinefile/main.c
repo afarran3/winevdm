@@ -232,7 +232,7 @@ vcxpojline vcxtemplate[] = {
     { TEMPLATE_NONE,"  <PropertyGroup Label=\"Globals\">" },
     //{ TEMPLATE_NONE,"    <ProjectGuid>{B83EEE1C-F8DE-4F82-8928-67F1B142E5F2}</ProjectGuid>" },
     { TEMPLATE_NONE,"    <Keyword>Win32Proj</Keyword>" },
-    { TEMPLATE_NONE,"    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>"},
+    { TEMPLATE_NONE,"    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>"},
     { TEMPLATE_RootNamespace,"    <RootNamespace>keyboard</RootNamespace>" },
     { TEMPLATE_NONE,"  </PropertyGroup>" },
     { TEMPLATE_NONE,"  <Import Project=\"$(VCTargetsPath)\Microsoft.Cpp.Default.props\" />" },

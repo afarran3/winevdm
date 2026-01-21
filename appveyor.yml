@@ -53,7 +53,7 @@ for:
         <ImportGroup Label=""PropertySheets"" />
         <PropertyGroup Label=""UserMacros"">
           <AsmPath>C:\msys64\usr\bin\</AsmPath>
-          <NtDllLibPath>`$(UniversalCRTSdkDir)Lib\10.0.17134.0\um\x86\</NtDllLibPath>
+          <NtDllLibPath>`$(UniversalCRTSdkDir)Lib\10.0.19041.0\um\x86\</NtDllLibPath>
         </PropertyGroup>
         <PropertyGroup>
           <_PropertySheetDisplayName>MacroPropertySheet</_PropertySheetDisplayName>

@@ -14,7 +14,7 @@
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>ctl3d</RootNamespace>
     <ProjectGuid>{B1A8AC7F-6B94-4AD0-8471-2C44F3014B5A}</ProjectGuid>
-    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
